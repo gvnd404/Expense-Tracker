@@ -19,6 +19,13 @@ const GroupDetails = () => {
     const [newMemberName, setNewMemberName] = useState('');
     const [showAddExpense, setShowAddExpense] = useState(false);
 
+    // For delete confirmation or formatting
+    const formatDate = (timestamp) => {
+        if (!timestamp) return '';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    };
+
     // Initial Fetch
     useEffect(() => {
         const fetchGroup = async () => {
@@ -85,145 +92,171 @@ const GroupDetails = () => {
     return (
         <div className="min-h-screen bg-gray-50/50 font-sans pb-20">
             {/* Header / Top Bar */}
-            <div className="bg-white border-b border-gray-100 sticky top-0 z-20">
-                <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 transition">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 transition hover:text-gray-600">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                         </button>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900">{group.name}</h1>
-                            <p className="text-xs text-gray-500">{participants.length} people • {expenses.length} expenses</p>
+                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{group.name}</h1>
+                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-0.5">
+                                <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">{participants.length} members</span>
+                                <span>•</span>
+                                <span>{expenses.length} expenses</span>
+                            </div>
                         </div>
                     </div>
+
                     <div className="text-right">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">Total Spent</p>
-                        <p className="text-lg font-bold text-teal-600">₹{totalSpent.toFixed(2)}</p>
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Total Spent</span>
+                            <span className="text-2xl font-bold text-teal-600">₹{totalSpent.toFixed(2)}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <main className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <main className="max-w-7xl mx-auto px-4 py-8">
 
-                {/* Left Column: Input Operations */}
-                <div className="lg:col-span-2 space-y-8">
-
-                    {/* Participants Card */}
-                    <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <span className="text-teal-500">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                            </span>
-                            Participants
-                        </h2>
-
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            {participants.map(member => (
-                                <span key={member.id} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
-                                    {member.name}
-                                </span>
-                            ))}
-                        </div>
-
-                        <form onSubmit={handleAddMember} className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newMemberName}
-                                onChange={(e) => setNewMemberName(e.target.value)}
-                                placeholder="Add participant..."
-                                className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500/20 outline-none transition"
-                            />
-                            <button type="submit" disabled={!newMemberName.trim()} className="bg-teal-100 hover:bg-teal-200 text-teal-700 p-3 rounded-xl transition disabled:opacity-50">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                            </button>
-                        </form>
-                    </section>
-
-                    {/* Add Expense Trigger Card */}
-                    <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <div className="flex justify-between items-center mb-6">
+                {/* Top Section: Participants & Quick Add */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <section className="col-span-1 lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-center">
+                        <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                                <span className="text-teal-500">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span className="p-1.5 bg-teal-100 text-teal-600 rounded-lg">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                 </span>
-                                Add Expense
+                                Participants
                             </h2>
                         </div>
 
-                        {/* Inline Simplified Trigger or Full Form Modal Trigger */}
-                        {!showAddExpense ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <button
-                                    onClick={() => setShowAddExpense(true)}
-                                    className="col-span-4 py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 font-medium hover:border-teal-500 hover:text-teal-600 hover:bg-teal-50/50 transition flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                    Add New Expense
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="animate-fade-in-up">
-                                <AddExpense
-                                    groupId={groupId}
-                                    participants={participants}
-                                    onClose={() => setShowAddExpense(false)}
-                                    onExpenseAdded={() => {/* Snapshot handles update */ }}
-                                    isInline={true} // Hint to remove modal overlay styles
-                                />
-                            </div>
-                        )}
-                    </section>
-                </div>
-
-                {/* Right Column: Balances & History */}
-                <div className="space-y-8">
-                    {/* Balances Card */}
-                    <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <div className="flex items-center gap-2 mb-6">
-                            <span className="text-emerald-500">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 3.666V14h-6v-3.334H5V5h14v5.666h-2M9 7v2m0 0h6m-6 0V7m6 0v2m-6 8h6m-3-3v3m-3-6h6m-6 0V7m0 2h6m0-2v2" /></svg>
-                            </span>
-                            <h2 className="text-lg font-bold text-gray-800">Balances</h2>
-                        </div>
-
-                        <BalanceView expenses={expenses} participants={participants} />
-                    </section>
-
-                    {/* Recent Activity Mini List */}
-                    <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">History</h2>
-                        <div className="space-y-4">
-                            {expenses.length === 0 ? (
-                                <p className="text-sm text-gray-400 italic">No activity yet.</p>
-                            ) : (
-                                expenses.slice(0, 5).map(exp => ( // Show only top 5 recent
-                                    <div key={exp.id} className="flex justify-between items-center pb-4 border-b border-gray-50 last:border-0 last:pb-0 hover:bg-gray-50/50 p-2 rounded-lg transition -mx-2">
-                                        <div>
-                                            <p className="text-base font-bold text-gray-800 mb-1">{exp.description}</p>
-                                            <p className="text-xs text-gray-400 font-medium">
-                                                {exp.date?.toDate ? new Date(exp.date.toDate()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : new Date(exp.date).toLocaleDateString()}
-                                                <span className="mx-1">•</span>
-                                                <span className="text-gray-500">
-                                                    {Object.keys(exp.paidBy).length > 1 ? `Paid by ${Object.keys(exp.paidBy).length} people` : `Paid by ${participants.find(p => p.id === Object.keys(exp.paidBy)[0])?.name || 'Unknown'}`}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-lg font-bold text-gray-900 block">₹{exp.amount.toFixed(2)}</span>
-                                            <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full inline-block mt-1">
-                                                {Object.keys(exp.splitBetween).length === participants.length ? 'Shared by all' : `${Object.keys(exp.splitBetween).length} involved`}
-                                            </span>
-                                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                            {participants.map(member => (
+                                <div key={member.id} className="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                        {member.name.charAt(0).toUpperCase()}
                                     </div>
-                                ))
-                            )}
-                            {expenses.length > 5 && (
-                                <button className="w-full text-center text-xs text-teal-600 font-bold hover:underline py-2">View All Activity</button>
-                            )}
+                                    <span className="text-sm font-medium text-gray-700">{member.name}</span>
+                                </div>
+                            ))}
+
+                            <form onSubmit={handleAddMember} className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={newMemberName}
+                                    onChange={(e) => setNewMemberName(e.target.value)}
+                                    placeholder="+ Add..."
+                                    className="w-24 px-3 py-2 bg-white border-b-2 border-gray-200 focus:border-teal-500 outline-none text-sm transition"
+                                />
+                                <button type="submit" disabled={!newMemberName.trim()} className="text-teal-600 hover:text-teal-700 disabled:opacity-30">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-6 shadow-lg text-white flex flex-col justify-between relative overflow-hidden group cursor-pointer"
+                        onClick={() => setShowAddExpense(true)}
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10 transition group-hover:scale-110"></div>
+                        <div>
+                            <h2 className="text-xl font-bold mb-1">Add Expense</h2>
+                            <p className="text-teal-100 text-sm">Split bills instantly</p>
+                        </div>
+                        <div className="mt-4 self-end bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
                         </div>
                     </section>
                 </div>
 
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* Activity Feed (Replaces History on Right) - Now Main Content */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
+                            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                </span>
+                                Expenses
+                            </h2>
+
+                            {showAddExpense && (
+                                <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-200 animate-slide-down">
+                                    <AddExpense
+                                        groupId={groupId}
+                                        participants={participants}
+                                        onClose={() => setShowAddExpense(false)}
+                                        onExpenseAdded={() => {/* Realtime update handles it */ }}
+                                        isInline={true}
+                                    />
+                                    <div className="mt-4 text-center">
+                                        <button onClick={() => setShowAddExpense(false)} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                {expenses.length === 0 ? (
+                                    <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
+                                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                                        </div>
+                                        <p className="text-gray-400 font-medium">No expenses yet. Add one to get started!</p>
+                                    </div>
+                                ) : (
+                                    expenses.map(exp => (
+                                        <div key={exp.id} className="group flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl border border-gray-100 border-l-4 border-l-transparent hover:border-l-teal-500 transition-all duration-200 shadow-sm hover:shadow-md cursor-default">
+                                            <div className="flex items-start gap-4">
+                                                <div className="flex flex-col items-center bg-gray-100 rounded-lg p-2 min-w-[60px]">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase">{formatDate(exp.date).split(' ')[0]}</span>
+                                                    <span className="text-xl font-bold text-gray-800">{formatDate(exp.date).split(' ')[1]}</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-gray-800 mb-1">{exp.description}</h3>
+                                                    <div className="text-sm text-gray-500 flex flex-col gap-0.5">
+                                                        <span className="flex items-center gap-1">
+                                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                            {Object.keys(exp.paidBy).length > 1
+                                                                ? <span className="font-medium text-gray-700">{Object.keys(exp.paidBy).length} people paid</span>
+                                                                : <span className="font-medium text-gray-700">{participants.find(p => p.id === Object.keys(exp.paidBy)[0])?.name || 'Unknown'} paid</span>
+                                                            }
+                                                        </span>
+                                                        <span className="text-xs text-gray-400">
+                                                            For {Object.keys(exp.splitBetween).length === participants.length ? 'Everyone' : `${Object.keys(exp.splitBetween).length} people`}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right">
+                                                <span className="block text-xl font-extrabold text-gray-900 tracking-tight">₹{exp.amount.toFixed(2)}</span>
+                                                {/* Optional: Add Delete icon here in future */}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Sidebar: Balances */}
+                    <div className="space-y-6">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-24">
+                            <div className="flex items-center gap-2 mb-6">
+                                <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
+                                </span>
+                                <h2 className="text-lg font-bold text-gray-800">Balances</h2>
+                            </div>
+
+                            <BalanceView expenses={expenses} participants={participants} />
+                        </section>
+                    </div>
+
+                </div>
             </main>
         </div>
     );

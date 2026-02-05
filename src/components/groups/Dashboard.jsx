@@ -28,7 +28,7 @@ const Dashboard = () => {
         e.preventDefault();
         if (!newGroupName.trim()) return;
         try {
-            await addDoc(collection(db, "groups"), {
+            const docRef = await addDoc(collection(db, "groups"), {
                 name: newGroupName,
                 createdBy: currentUser.uid,
                 createdAt: serverTimestamp(),
@@ -37,6 +37,7 @@ const Dashboard = () => {
             });
             setNewGroupName('');
             setShowCreateModal(false);
+            window.location.href = `/group/${docRef.id}`;
         } catch (error) {
             console.error("Error creating group: ", error);
         }
@@ -186,7 +187,7 @@ const Dashboard = () => {
                                     disabled={!newGroupName.trim()}
                                     className="px-8 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition font-bold shadow-lg shadow-teal-200 disabled:opacity-50 disabled:shadow-none"
                                 >
-                                    Classic
+                                    Create Trip
                                 </button>
                             </div>
                         </form>
