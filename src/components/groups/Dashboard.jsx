@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 
 const Dashboard = () => {
     const { currentUser, logout } = useAuth();
@@ -42,21 +42,66 @@ const Dashboard = () => {
         }
     };
 
+    const handleDeleteGroup = async (e, groupId) => {
+        e.stopPropagation();
+        if (window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
+            try {
+                // In a real app, we should also delete sub-collections (expenses)
+                // However, Firestore doesn't support recursive delete easily from client SDK without cloud functions
+                // For this MVP, we will only delete the group document reference
+                await deleteDoc(doc(db, "groups", groupId));
+            } catch (error) {
+                console.error("Error deleting group:", error);
+                alert("Failed to delete group");
+            }
+        }
+    };
+
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+
     return (
         <div className="min-h-screen bg-gray-50/50 font-sans p-6 pb-20">
             {/* Header */}
             <header className="max-w-7xl mx-auto mb-10 flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Hello, {currentUser?.displayName?.split(' ')[0]} 👋</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Hello, {currentUser?.displayName?.split(' ')[0]}</h1>
                     <p className="text-gray-500 mt-1">Manage all your shared expenses in one place.</p>
                 </div>
-                <button
-                    onClick={() => logout()}
-                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    Logout
-                </button>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        className="flex items-center gap-2 focus:outline-none"
+                    >
+                        {currentUser?.photoURL ? (
+                            <img
+                                src={currentUser.photoURL}
+                                alt="Profile"
+                                className="w-10 h-10 rounded-full border border-gray-200 hover:ring-2 hover:ring-teal-500 transition"
+                            />
+                        ) : (
+                            <div className="w-10 h-10 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center font-bold">
+                                {currentUser?.displayName?.[0] || 'U'}
+                            </div>
+                        )}
+                    </button>
+
+                    {showProfileMenu && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-gray-100 z-50 animate-scale-in">
+                            <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                                <p className="text-sm font-semibold text-gray-800 truncate">{currentUser?.displayName}</p>
+                                <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
+                            </div>
+                            <button
+                                onClick={() => logout()}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                Logout
+                            </button>
+                        </div>
+                    )}
+                </div>
             </header>
 
             <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -64,7 +109,7 @@ const Dashboard = () => {
                 {/* Create New Group Button */}
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex flex-col items-center justify-center h-56 rounded-3xl border-2 border-dashed border-gray-300 hover:border-teal-400 hover:bg-teal-50/30 transition group gap-4"
+                    className="flex flex-col items-center justify-center h-56 rounded-3xl border-2 border-dashed border-gray-300 hover:border-teal-400 hover:bg-teal-50/30 transition group gap-4 bg-gray-50 hover:bg-white"
                 >
                     <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-300 group-hover:text-teal-500 group-hover:shadow-md transition">
                         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
@@ -81,12 +126,23 @@ const Dashboard = () => {
                     >
                         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-teal-500/10 to-transparent rounded-bl-full -mr-4 -mt-4 transition group-hover:scale-110"></div>
 
-                        <div>
-                            <div className="w-12 h-12 bg-teal-100 text-teal-600 rounded-2xl flex items-center justify-center mb-4 text-xl font-bold">
-                                {group.name.charAt(0).toUpperCase()}
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-4 text-xl font-bold shadow-sm">
+                                    {group.name.charAt(0).toUpperCase()}
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800 truncate pr-4 max-w-[200px]">{group.name}</h3>
+                                <p className="text-gray-500 text-sm mt-1">{group.participantsList?.length || 1} people</p>
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800 truncate pr-4">{group.name}</h3>
-                            <p className="text-gray-500 text-sm mt-1">{group.participantsList?.length || 1} people</p>
+
+                            {/* Delete Button (Stop Propagation) */}
+                            <button
+                                onClick={(e) => handleDeleteGroup(e, group.id)}
+                                className="text-gray-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition z-10"
+                                title="Delete Group"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-2 mt-4 text-teal-600 font-medium text-sm group-hover:gap-3 transition-all">
@@ -112,7 +168,7 @@ const Dashboard = () => {
                                     type="text"
                                     value={newGroupName}
                                     onChange={(e) => setNewGroupName(e.target.value)}
-                                    placeholder="e.g. Summer Vacation 🌴"
+                                    placeholder="e.g. Summer Vacation"
                                     className="w-full px-5 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-teal-500/20 outline-none transition text-lg font-medium text-gray-800 placeholder-gray-400"
                                     autoFocus
                                 />
