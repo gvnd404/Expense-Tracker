@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { calculateEqualSplit } from '../../lib/algorithms';
 
-const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline = false }) => {
+const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline = false, initialData = null }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -15,17 +15,53 @@ const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline =
 
     const [consumerIds, setConsumerIds] = useState([]);
 
+    // Initialize state
     useEffect(() => {
         if (participants.length > 0) {
+            // Default Init
             setPayerId(participants[0].id);
             setConsumerIds(participants.map(p => p.id));
-
-            // Init multi-payers with 0
             const initialMulti = {};
             participants.forEach(p => initialMulti[p.id] = '');
             setMultiPayers(initialMulti);
+
+            // Edit Mode Overwrite
+            if (initialData) {
+                setDescription(initialData.description);
+                setAmount(initialData.amount);
+
+                // Handle Date (Firestore Timestamp or String)
+                if (initialData.date) {
+                    const d = initialData.date.toDate ? initialData.date.toDate() : new Date(initialData.date);
+                    setDate(d.toISOString().split('T')[0]);
+                }
+
+                // Handle Payers
+                const paidByIds = Object.keys(initialData.paidBy || {});
+                if (paidByIds.length > 1) {
+                    setPayerMode('multiple');
+                    const newMulti = {};
+                    participants.forEach(p => newMulti[p.id] = initialData.paidBy[p.id] || '');
+                    setMultiPayers(newMulti);
+                } else if (paidByIds.length === 1) {
+                    setPayerMode('single');
+                    setPayerId(paidByIds[0]);
+                }
+
+                // Handle Consumers
+                // If everyone was split, splitBetween might not explicitly list everyone if logic differs, 
+                // but our algorithm saves explicit list usually? 
+                // Wait, our algorithm saves `splitBetween` map {id: amount}. 
+                // `consumptions` array is what we save alongside for easy consumption tracking?
+                // Looking at previous AddExpense, we saved `consumptions: consumerIds`.
+                if (initialData.consumptions) {
+                    setConsumerIds(initialData.consumptions);
+                } else if (initialData.splitBetween) {
+                    setConsumerIds(Object.keys(initialData.splitBetween));
+                }
+            }
         }
-    }, [participants]);
+    }, [participants, initialData]);
 
     const handleMultiPayerChange = (userId, value) => {
         setMultiPayers(prev => ({
@@ -49,7 +85,7 @@ const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline =
             // Validate multi-payer total
             const multiTotal = Object.values(multiPayers).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
             if (Math.abs(multiTotal - totalAmount) > 0.01) {
-                alert(`Total paid amounts (₹${multiTotal}) must equal expense amount (₹${totalAmount})`);
+                alert(`Total paid amounts (₹${multiTotal.toFixed(2)}) must equal expense amount (₹${totalAmount})`);
                 return;
             }
 
@@ -65,26 +101,38 @@ const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline =
         const splitMap = calculateEqualSplit(totalAmount, consumerIds);
 
         try {
-            await addDoc(collection(db, "expenses"), {
+            const expenseData = {
                 groupId,
                 description,
                 amount: totalAmount,
                 date: new Date(date),
                 paidBy,
                 splitBetween: splitMap,
-                createdAt: serverTimestamp(),
-                consumptions: consumerIds
-            });
+                consumptions: consumerIds,
+                updatedAt: serverTimestamp()
+            };
+
+            if (initialData && initialData.id) {
+                // Update
+                await updateDoc(doc(db, "expenses", initialData.id), expenseData);
+            } else {
+                // Create
+                expenseData.createdAt = serverTimestamp();
+                await addDoc(collection(db, "expenses"), expenseData);
+            }
+
             onExpenseAdded();
             if (!isInline) onClose();
-            else {
+            else if (!initialData) {
+                // Only clear if adding new, not if editing (user might want to see what they saved or modal closes)
+                // Actually if inline editing, we usually close the edit form.
                 setDescription('');
                 setAmount('');
                 setMultiPayers(Object.fromEntries(participants.map(p => [p.id, ''])));
             }
         } catch (error) {
-            console.error("Error adding expense:", error);
-            alert("Failed to add expense");
+            console.error("Error saving expense:", error);
+            alert("Failed to save expense");
         }
     };
 
@@ -103,7 +151,7 @@ const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline =
         <div className={`bg-white ${!isInline ? 'rounded-2xl shadow-xl max-w-lg w-full p-6 animate-scale-in max-h-[90vh] overflow-y-auto' : ''}`}>
             {!isInline && (
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-800">Add New Expense</h2>
+                    <h2 className="text-xl font-bold text-gray-800">{initialData ? 'Edit Expense' : 'Add New Expense'}</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -252,9 +300,20 @@ const AddExpense = ({ groupId, participants, onClose, onExpenseAdded, isInline =
                     className="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl transition shadow-xl shadow-gray-200 flex items-center justify-center gap-2"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                    Save Expense
+                    {initialData ? 'Update Expense' : 'Save Expense'}
                 </button>
             </form>
+        </div>
+    );
+
+    if (isInline && !initialData) return content; // If inline creation, just content. 
+    // If inline editing, we might use a modal or replace the view. 
+    // Let's stick to using modal for "Edit" to differentiate from "Compact Add" to avoid clutter.
+
+    // Actually, user wants editing. Let's make "Edit" always a modal for now to be safe.
+    if (isInline && initialData) return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            {content}
         </div>
     );
 

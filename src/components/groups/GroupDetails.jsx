@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
-import { doc, getDoc, updateDoc, arrayUnion, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, collection, query, where, onSnapshot, deleteDoc, arrayRemove } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import AddExpense from '../expenses/AddExpense';
 import BalanceView from '../settlement/BalanceView';
@@ -18,6 +18,7 @@ const GroupDetails = () => {
     // UI State
     const [newMemberName, setNewMemberName] = useState('');
     const [showAddExpense, setShowAddExpense] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
 
     // For delete confirmation or formatting
     const formatDate = (timestamp) => {
@@ -83,11 +84,39 @@ const GroupDetails = () => {
         }
     };
 
+    const handleRemoveMember = async (member) => {
+        if (window.confirm(`Are you sure you want to remove ${member.name}?`)) {
+            try {
+                const groupRef = doc(db, "groups", groupId);
+                await updateDoc(groupRef, { participantsList: arrayRemove(member) });
+                setGroup(prev => ({
+                    ...prev,
+                    participantsList: prev.participantsList.filter(p => p.id !== member.id)
+                }));
+            } catch (error) {
+                console.error("Error removing member:", error);
+                alert("Failed to remove member. They might be involved in expenses.");
+            }
+        }
+    };
+
+    const handleDeleteExpense = async (e, expenseId) => {
+        e.stopPropagation();
+        if (window.confirm("Delete this expense?")) {
+            try {
+                await deleteDoc(doc(db, "expenses", expenseId));
+            } catch (error) {
+                console.error("Error deleting expense:", error);
+            }
+        }
+    };
+
     if (loading) return <div className="min-h-screen flex items-center justify-center text-teal-600 font-medium">Loading...</div>;
     if (!group) return null;
 
     const participants = group.participantsList || [];
     const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const perPersonShare = participants.length > 0 ? (totalSpent / participants.length) : 0;
 
     return (
         <div className="min-h-screen bg-gray-50/50 font-sans pb-20">
@@ -108,7 +137,12 @@ const GroupDetails = () => {
                         </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-6">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold cursor-help" title="Average share per person">Per Person</span>
+                            <span className="text-xl font-bold text-gray-500">₹{perPersonShare.toFixed(2)}</span>
+                        </div>
+                        <div className="w-px h-8 bg-gray-200"></div>
                         <div className="flex flex-col items-end">
                             <span className="text-xs text-gray-400 uppercase tracking-widest font-semibold">Total Spent</span>
                             <span className="text-2xl font-bold text-teal-600">₹{totalSpent.toFixed(2)}</span>
@@ -133,11 +167,20 @@ const GroupDetails = () => {
 
                         <div className="flex flex-wrap items-center gap-3">
                             {participants.map(member => (
-                                <div key={member.id} className="flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                                <div key={member.id} className="group relative flex items-center gap-2 pl-2 pr-4 py-1.5 bg-gray-50 rounded-full border border-gray-100 hover:border-red-200 transition">
                                     <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
                                         {member.name.charAt(0).toUpperCase()}
                                     </div>
                                     <span className="text-sm font-medium text-gray-700">{member.name}</span>
+
+                                    {/* Remove Button */}
+                                    <button
+                                        onClick={() => handleRemoveMember(member)}
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition shadow-sm scale-90 hover:scale-110"
+                                        title="Remove member"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
                                 </div>
                             ))}
 
@@ -173,7 +216,7 @@ const GroupDetails = () => {
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* Activity Feed (Replaces History on Right) - Now Main Content */}
+                    {/* Activity Feed */}
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
                             <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
@@ -183,6 +226,7 @@ const GroupDetails = () => {
                                 Expenses
                             </h2>
 
+                            {/* Add Expense Form (Inline) */}
                             {showAddExpense && (
                                 <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-200 animate-slide-down">
                                     <AddExpense
@@ -198,6 +242,18 @@ const GroupDetails = () => {
                                 </div>
                             )}
 
+                            {/* Edit Expense Modal */}
+                            {editingExpense && (
+                                <AddExpense
+                                    groupId={groupId}
+                                    participants={participants}
+                                    initialData={editingExpense}
+                                    onClose={() => setEditingExpense(null)}
+                                    onExpenseAdded={() => setEditingExpense(null)}
+                                    isInline={true} // Triggers modal wrapper in component
+                                />
+                            )}
+
                             <div className="space-y-4">
                                 {expenses.length === 0 ? (
                                     <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
@@ -208,14 +264,22 @@ const GroupDetails = () => {
                                     </div>
                                 ) : (
                                     expenses.map(exp => (
-                                        <div key={exp.id} className="group flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl border border-gray-100 border-l-4 border-l-transparent hover:border-l-teal-500 transition-all duration-200 shadow-sm hover:shadow-md cursor-default">
+                                        <div key={exp.id}
+                                            className="group flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl border border-gray-100 border-l-4 border-l-transparent hover:border-l-teal-500 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                                            onClick={() => setEditingExpense(exp)}
+                                        >
                                             <div className="flex items-start gap-4">
                                                 <div className="flex flex-col items-center bg-gray-100 rounded-lg p-2 min-w-[60px]">
                                                     <span className="text-xs font-bold text-gray-500 uppercase">{formatDate(exp.date).split(' ')[0]}</span>
                                                     <span className="text-xl font-bold text-gray-800">{formatDate(exp.date).split(' ')[1]}</span>
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-lg font-bold text-gray-800 mb-1">{exp.description}</h3>
+                                                    <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
+                                                        {exp.description}
+                                                        <span className="opacity-0 group-hover:opacity-100 text-teal-400">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                        </span>
+                                                    </h3>
                                                     <div className="text-sm text-gray-500 flex flex-col gap-0.5">
                                                         <span className="flex items-center gap-1">
                                                             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -231,9 +295,17 @@ const GroupDetails = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="text-right">
-                                                <span className="block text-xl font-extrabold text-gray-900 tracking-tight">₹{exp.amount.toFixed(2)}</span>
-                                                {/* Optional: Add Delete icon here in future */}
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <span className="block text-xl font-extrabold text-gray-900 tracking-tight">₹{exp.amount.toFixed(2)}</span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => handleDeleteExpense(e, exp.id)}
+                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100"
+                                                    title="Delete Expense"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
                                             </div>
                                         </div>
                                     ))
