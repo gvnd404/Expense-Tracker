@@ -58,20 +58,25 @@ const BalanceView = ({ expenses, participants }) => {
             {/* Settlement Plan Button/Section */}
             {settlements.length > 0 && (
                 <div className="mt-8 pt-6 border-t border-gray-100">
-                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl p-4 text-white shadow-lg">
-                        <h3 className="font-bold mb-3 flex items-center gap-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200 transform hover:scale-[1.02] transition duration-300">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 border-b border-white/20 pb-3">
+                            <span className="p-1.5 bg-white/20 rounded-lg">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </span>
                             Settlement Plan
+                            <span className="ml-auto text-xs font-normal bg-white/20 px-2 py-0.5 rounded-full">{settlements.length} payments</span>
                         </h3>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {settlements.map((s, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-lg backdrop-blur-sm">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold">{getParticipantName(s.from)}</span>
-                                        <span className="opacity-70 text-xs">pays</span>
-                                        <span className="font-semibold">{getParticipantName(s.to)}</span>
+                                <div key={idx} className="flex items-center justify-between text-sm bg-black/20 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-white">{getParticipantName(s.from)}</span>
+                                            <span className="text-indigo-200 text-xs">pays</span>
+                                            <span className="font-bold text-white">{getParticipantName(s.to)}</span>
+                                        </div>
                                     </div>
-                                    <span className="font-bold">₹{s.amount.toFixed(2)}</span>
+                                    <span className="font-extrabold text-lg text-emerald-300">₹{s.amount.toFixed(0)}</span>
                                 </div>
                             ))}
                         </div>

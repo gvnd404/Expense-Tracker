@@ -265,43 +265,43 @@ const GroupDetails = () => {
                                 ) : (
                                     expenses.map(exp => (
                                         <div key={exp.id}
-                                            className="group flex items-center justify-between p-5 hover:bg-gray-50 rounded-2xl border border-gray-100 border-l-4 border-l-transparent hover:border-l-teal-500 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                                            className="group flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 hover:bg-gray-50 rounded-2xl border border-gray-100 border-l-4 border-l-transparent hover:border-l-teal-500 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer gap-4 sm:gap-0"
                                             onClick={() => setEditingExpense(exp)}
                                         >
-                                            <div className="flex items-start gap-4">
-                                                <div className="flex flex-col items-center bg-gray-100 rounded-lg p-2 min-w-[60px]">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase">{formatDate(exp.date).split(' ')[0]}</span>
-                                                    <span className="text-xl font-bold text-gray-800">{formatDate(exp.date).split(' ')[1]}</span>
+                                            <div className="flex items-start gap-3 sm:gap-4 w-full sm:w-auto">
+                                                <div className="flex flex-col items-center bg-gray-100 rounded-lg p-2 min-w-[50px] sm:min-w-[60px]">
+                                                    <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">{formatDate(exp.date).split(' ')[0]}</span>
+                                                    <span className="text-lg sm:text-xl font-bold text-gray-800">{formatDate(exp.date).split(' ')[1]}</span>
                                                 </div>
-                                                <div>
-                                                    <h3 className="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
-                                                        {exp.description}
-                                                        <span className="opacity-0 group-hover:opacity-100 text-teal-400">
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-1 flex items-center gap-2 truncate">
+                                                        <span className="truncate">{exp.description}</span>
+                                                        <span className="opacity-0 group-hover:opacity-100 text-teal-400 hidden sm:inline">
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                                         </span>
                                                     </h3>
                                                     <div className="text-sm text-gray-500 flex flex-col gap-0.5">
                                                         <span className="flex items-center gap-1">
-                                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                            <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                                             {Object.keys(exp.paidBy).length > 1
-                                                                ? <span className="font-medium text-gray-700">{Object.keys(exp.paidBy).length} people paid</span>
-                                                                : <span className="font-medium text-gray-700">{participants.find(p => p.id === Object.keys(exp.paidBy)[0])?.name || 'Unknown'} paid</span>
+                                                                ? <span className="font-medium text-gray-700 text-xs sm:text-sm">{Object.keys(exp.paidBy).length} people paid</span>
+                                                                : <span className="font-medium text-gray-700 text-xs sm:text-sm">{participants.find(p => p.id === Object.keys(exp.paidBy)[0])?.name || 'Unknown'} paid</span>
                                                             }
                                                         </span>
-                                                        <span className="text-xs text-gray-400">
-                                                            For {Object.keys(exp.splitBetween).length === participants.length ? 'Everyone' : `${Object.keys(exp.splitBetween).length} people`}
+                                                        <span className="text-[10px] sm:text-xs text-gray-400 truncate">
+                                                            For {Object.keys(exp.splitBetween).length === participants.length ? 'Everyone' : `${Object.keys(exp.splitBetween).length} involved`}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <span className="block text-xl font-extrabold text-gray-900 tracking-tight">₹{exp.amount.toFixed(2)}</span>
+                                            <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-4">
+                                                <div className="text-left sm:text-right">
+                                                    <span className="block text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">₹{exp.amount.toFixed(2)}</span>
                                                 </div>
                                                 <button
                                                     onClick={(e) => handleDeleteExpense(e, exp.id)}
-                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100"
+                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition sm:opacity-0 sm:group-hover:opacity-100"
                                                     title="Delete Expense"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
